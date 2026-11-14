@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KNULL AI 3.1</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle, #10264b, #030711);
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 25px 15px;
+}
+
+h1 {
+    color: #00d9ff;
+    font-size: 38px;
+    letter-spacing: 5px;
+}
+
+.subtitle {
+    color: #9bbbdc;
+}
+
+.orb {
+    width: 150px;
+    height: 150px;
+    margin: 35px auto;
+    border-radius: 50%;
+    background: radial-gradient(circle, #00eaff, #0751a8, #02091b);
+    box-shadow: 0 0 35px #00c8ff;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    50% {
+        box-shadow: 0 0 65px #00c8ff;
+    }
+}
+
+.status {
+    color: #00eaff;
+    margin: 20px;
+    min-height: 24px;
+}
+
+button, input, select {
+    width: 90%;
+    max-width: 350px;
+    padding: 13px;
+    margin: 8px;
+    border-radius: 10px;
+    border: none;
+    font-size: 15px;
+}
+
+button {
+    background: #007bff;
+    color: white;
+    font-weight: bold;
+}
+
+button:active {
+    background: #004b99;
+}
+
+select, input {
+    background: #172b48;
+    color: white;
+    border: 1px solid #00c8ff;
+}
+
+.output {
+    background: #10213a;
+    border: 1px solid #087cb5;
+    border-radius: 12px;
+    padding: 15px;
+    margin: 20px auto;
+    max-width: 400px;
+    min-height: 65px;
+    overflow-wrap: anywhere;
+}
+</style>
+</head>
+
+<body>
+
+<h1>KNULL</h1>
+<p class="subtitle">YOUR PERSONAL AI ASSISTANT</p>
+
+<div class="orb"></div>
+
+<p id="status" class="status">KNULL SYSTEM READY</p>
+
+<select id="voiceSelect">
+    <option value="">Loading voices...</option>
+</select>
+
+<br>
+
+<button onclick="testVoice()">TEST VOICE</button>
+<button onclick="startListening()">🎤 TALK TO KNULL</button>
+<button onclick="stopListening()">STOP LISTENING</button>
+
+<div class="output">
+    <b>You said:</b>
+    <p id="heard">Waiting for your command...</p>
+</div>
+
+<div class="output">
+    <b>KNULL says:</b>
+    <p id="answer">Hello! I am KNULL.</p>
+</div>
+
+<input id="textCommand"
+       type="text"
+       placeholder="Type your command here">
+
+<button onclick="sendText()">SEND COMMAND</button>
+
+<script>
+
+const statusText = document.getElementById("status");
+const voiceSelect = document.getElementById("voiceSelect");
+
+let voices = [];
+let recognition = null;
+let listening = false;
+
+
+// LOAD AVAILABLE VOICES
+
+function loadVoices() {
+
+    voices = speechSynthesis.getVoices();
+
+    voiceSelect.innerHTML = "";
+
+    if (voices.length === 0) {
+        voiceSelect.innerHTML =
+            '<option value="">No voices available</option>';
+        return;
+    }
+
+    voices.forEach((voice, index) => {
+
+        let option = document.createElement("option");
+
+        option.value = index;
+        option.textContent =
+            voice.name + " (" + voice.lang + ")";
+
+        voiceSelect.appendChild(option);
+    });
+
+    // Prefer an English voice with a female-associated name.
+    let femaleVoice = voices.findIndex(v =>
+        /female|woman|zira|samantha|karen|susan|hazel|aria/i
+        .test(v.name)
+    );
+
+    let englishVoice = voices.findIndex(v =>
+        /^en/i.test(v.lang)
+    );
+
+    voiceSelect.value =
+        femaleVoice >= 0 ? femaleVoice :
+        englishVoice >= 0 ? englishVoice : 0;
+}
+
+loadVoices();
+
+speechSynthesis.onvoiceschanged = loadVoices;
+
+
+// SPEAK
+
+function speak(text) {
+
+    speechSynthesis.cancel();
+
+    let message = new SpeechSynthesisUtterance(text);
+
+    let selectedIndex = Number(voiceSelect.value);
+
+    if (voices[selectedIndex]) {
+        message.voice = voices[selectedIndex];
+        message.lang = voices[selectedIndex].lang;
+    } else {
+        message.lang = "en-IN";
+    }
+
+    message.rate = 0.95;
+    message.pitch = 1.15;
+
+    speechSynthesis.speak(message);
+
+    document.getElementById("answer").textContent = text;
+}
+
+
+// TEST VOICE
+
+function testVoice() {
+    speak("Hello! I am KNULL. My voice system is working.");
+}
+
+
+// COMMAND PROCESSING
+
+function processCommand(command) {
+
+    let text = command.toLowerCase().trim();
+    let reply = "";
+
+    if (text.includes("hello") || text.includes("hi")) {
+        reply = "Hello! How can I help you?";
+    }
+
+    else if (text.includes("your name")) {
+        reply = "My name is KNULL, your personal assistant.";
+    }
+
+    else if (text.includes("how are you")) {
+        reply = "I am functioning perfectly. Thank you!";
+    }
+
+    else if (text.includes("time")) {
+        reply = "The current time is " +
+            new Date().toLocaleTimeString();
+    }
+
+    else if (text.includes("date")) {
+        reply = "Today's date is " +
+            new Date().toLocaleDateString();
+    }
+
+    else if (text.includes("who created you")) {
+        reply = "I was created as your personal KNULL assistant project.";
+    }
+
+    else if (text.includes("thank you")) {
+        reply = "You are welcome!";
+    }
+
+    else if (text.includes("bye")) {
+        reply = "Goodbye! Have a nice day.";
+    }
+
+    else {
+        reply = "Sorry, I do not understand that command yet.";
+    }
+
+    speak(reply);
+}
+
+
+// MICROPHONE SYSTEM
+
+function startListening() {
+
+    const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+    if (!window.isSecureContext) {
+        statusText.textContent =
+            "ERROR: Open KNULL using an HTTPS webpage.";
+        return;
+    }
+
+    if (!navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia) {
+
+        statusText.textContent =
+            "ERROR: Microphone access is unavailable.";
+        return;
+    }
+
+    if (!SpeechRecognition) {
+        statusText.textContent =
+            "ERROR: Speech recognition is not supported here.";
+        return;
+    }
+
+    if (listening) return;
+
+    recognition = new SpeechRecognition();
+
+    recognition.lang = "en-IN";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = function() {
+        listening = true;
+        statusText.textContent = "LISTENING...";
+    };
+
+    recognition.onresult = function(event) {
+
+        let command =
+            event.results[0][0].transcript;
+
+        document.getElementById("heard").textContent =
+            command;
+
+        processCommand(command);
+    };
+
+    recognition.onerror = function(event) {
+
+        listening = false;
+
+        const errors = {
+            "not-allowed": "Microphone permission denied.",
+            "service-not-allowed": "Speech service permission denied.",
+            "no-speech": "No speech detected. Try again.",
+            "audio-capture": "Microphone not detected.",
+            "network": "Speech recognition network error.",
+            "aborted": "Listening was stopped."
+        };
+
+        statusText.textContent =
+            errors[event.error] ||
+            "Microphone error: " + event.error;
+    };
+
+    recognition.onend = function() {
+        listening = false;
+
+        if (statusText.textContent === "LISTENING...") {
+            statusText.textContent = "KNULL READY";
+        }
+    };
+
+    try {
+        recognition.start();
+    }
+
+    catch (error) {
+        listening = false;
+        statusText.textContent =
+            "Could not start microphone: " + error.message;
+    }
+}
+
+
+// STOP LISTENING
+
+function stopListening() {
+
+    if (recognition && listening) {
+        recognition.stop();
+    }
+
+    listening = false;
+    statusText.textContent = "LISTENING STOPPED";
+}
+
+
+// TEXT COMMAND
+
+function sendText() {
+
+    let command =
+        document.getElementById("textCommand").value;
+
+    if (command.trim() === "") return;
+
+    document.getElementById("heard").textContent =
+        command;
+
+    processCommand(command);
+
+    document.getElementById("textCommand").value = "";
+}
+
+</script>
+
+</body>
+</html>
